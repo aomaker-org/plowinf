@@ -24,6 +24,8 @@ repository specification and directives in `AI.md`.
 
 For the authoritative specification and guides, see:
 - [`AI.md`](AI.md) - Full AI kernel directives.
+- [`docs/gemini_web_agy_guide.md`](docs/gemini_web_agy_guide.md) - Pairing guide for `gemini.google.com`.
+- [`docs/gemweb_context_pack.md`](docs/gemweb_context_pack.md) - Bundled context pack for web sessions.
 - [`docs/architecture.md`](docs/architecture.md) - Core architecture spec.
 - [`docs/inference_guide.md`](docs/inference_guide.md) - Inference & SLM guide.
 
