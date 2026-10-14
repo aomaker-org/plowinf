@@ -3,7 +3,8 @@
 
 Enforces:
 1. Strict local-only network air-gap (zero external I/O or cloud API leakage).
-2. Additive-only file system operations (zero in-place destructive overwrites).
+2. Scoped additive file operations (untracked worker artifacts use _rev001;
+   canonical Git-tracked source is updated in place via feature branches).
 3. Non-destructive Git history management (blocks force-push, reset --hard, etc).
 """
 
@@ -42,6 +43,60 @@ def validate_local_only_url(url: str) -> None:
         )
 
 
+CANONICAL_SOURCE_DIRS: tuple[str, ...] = (
+    "src",
+    "tests",
+    "docs",
+    "tools",
+)
+CANONICAL_ROOT_FILES: tuple[str, ...] = (
+    "pyproject.toml",
+    "Makefile",
+    "AI.md",
+    "README.md",
+)
+
+
+def validate_additive_artifact_path(
+    target_path: str | Path,
+    repo_root: str | Path | None = None,
+) -> Path:
+    """Ensure AdditiveFileHandler (_rev001) is not used on Git-tracked source.
+
+    Per Directive 07, canonical repository source files under src/, tests/,
+    docs/, tools/, and root config files must retain canonical filenames and
+    rely on atomic Git commits for history rather than _revNNN duplicates.
+    """
+    resolved_target = Path(target_path).resolve()
+    root = (
+        Path(repo_root).resolve()
+        if repo_root is not None
+        else Path(__file__).resolve().parents[2]
+    )
+
+    try:
+        rel_path = resolved_target.relative_to(root)
+    except ValueError:
+        # Target is outside the repository root (e.g., /tmp or pytest tmp_path)
+        return resolved_target
+
+    parts = rel_path.parts
+    if not parts:
+        return resolved_target
+
+    if parts[0] in CANONICAL_SOURCE_DIRS or (
+        len(parts) == 1 and parts[0] in CANONICAL_ROOT_FILES
+    ):
+        raise ValueError(
+            f"Directive 07 violation: '{rel_path}' is inside a canonical "
+            f"Git-tracked path ({parts[0]}). Update canonical source files "
+            f"in place on a feature/* branch; reserve AdditiveFileHandler "
+            f"(_rev001) for untracked worker artifacts and drafts."
+        )
+
+    return resolved_target
+
+
 class AdditiveFileHandler:
     """Guarantees all file operations create new versioned files without overwriting."""
 
@@ -50,14 +105,19 @@ class AdditiveFileHandler:
         return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
     @classmethod
-    def get_additive_path(cls, target_path: Path) -> Path:
+    def get_additive_path(
+        cls,
+        target_path: str | Path,
+        repo_root: str | Path | None = None,
+    ) -> Path:
         """Return an uncollided additive file path with numeric revision suffix."""
-        if not target_path.exists():
-            return target_path
+        resolved = validate_additive_artifact_path(target_path, repo_root=repo_root)
+        if not resolved.exists():
+            return resolved
 
-        parent = target_path.parent
-        stem = target_path.stem
-        suffix = target_path.suffix
+        parent = resolved.parent
+        stem = resolved.stem
+        suffix = resolved.suffix
 
         revision = 1
         while True:
@@ -67,18 +127,30 @@ class AdditiveFileHandler:
             revision += 1
 
     @classmethod
-    def safe_write_additive(cls, target_path: Path, content: str) -> Path:
+    def safe_write_additive(
+        cls,
+        target_path: str | Path,
+        content: str,
+        repo_root: str | Path | None = None,
+    ) -> Path:
         """Write content additively, guaranteeing existing files are never overwritten."""
-        resolved = Path(target_path).resolve()
+        resolved = validate_additive_artifact_path(target_path, repo_root=repo_root)
         resolved.parent.mkdir(parents=True, exist_ok=True)
 
         if resolved.exists():
             existing_content = resolved.read_text(encoding="utf-8")
             if cls.compute_sha256(existing_content) == cls.compute_sha256(content):
-                logger.info("File %s already exists with identical content. Preserving.", resolved)
+                logger.info(
+                    "File %s already exists with identical content. Preserving.",
+                    resolved,
+                )
                 return resolved
-            additive_path = cls.get_additive_path(resolved)
-            logger.info("Target %s exists with different content. Writing additively to %s", resolved, additive_path)
+            additive_path = cls.get_additive_path(resolved, repo_root=repo_root)
+            logger.info(
+                "Target %s exists with different content. Writing additively to %s",
+                resolved,
+                additive_path,
+            )
             resolved = additive_path
 
         resolved.write_text(content, encoding="utf-8")

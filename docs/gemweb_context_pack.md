@@ -21,7 +21,7 @@ SECTION 1: SYSTEM & WORKSPACE SUMMARY
 - Local Model Weights:
   * ~/ai_models/qwen2-1.5b.gguf (892 MB Q4 quantized GGUF)
   * ~/ai_models/stories15M.bin (58 MB compact Llama2.c weights)
-- Verification State: 39/39 unit tests passing via `uv run pytest`
+- Verification State: 44/44 unit tests passing via `uv run pytest`
 
 <!-- FILE_START: docs/gemini_web_agy_guide.md -->
 # Path: plowinf/docs/gemini_web_agy_guide.md
@@ -66,7 +66,8 @@ All 5 inference backends are tested, active, and verified:
    - Latency: ~1.95s on CPU (warm), ~6.6 words/s (~9.5 tok/s).
    - Features: Dynamic `.gguf` auto-registration via `/api/create`, streaming.
 2. **`openai_compat`** (`OpenAICompatBackend`):
-   - Protocol: HTTP `/v1/chat/completions` on `127.0.0.1:11434/v1` or `:8000/v1`.
+   - Protocol: HTTP `/v1/chat/completions` on `127.0.0.1:11434/v1`
+     or `:8000/v1`.
    - Latency: ~2.12s on CPU, ~6.1 words/s (~8.8 tok/s).
    - Features: Standard OpenAI wire protocol compatibility with vLLM/LM Studio.
 3. **`llama_cpp_cli`** (`LlamaCppCliBackend`):
@@ -95,9 +96,11 @@ All 5 inference backends are tested, active, and verified:
   - File Footer:
     - Markdown: `<!-- end of file: <path> -->`
     - Python/Shell: `# end of file: <path>`
-- **[Directive 07] Git Branch & Additive Safety**:
+- **[Directive 07] Git Branch & Scoped Additive Safety**:
   - Dedicated feature branches (`feature/*`); never commit to `main`.
-  - Additive file operations (no destructive file overwriting).
+  - Untracked worker outputs/drafts use `_rev001` additive revisions.
+  - Git-tracked source (`src/`, `tests/`, `docs/`, `tools/`, configs) is
+    updated in place on canonical filenames and versioned via Git commits.
   - `git push --force` is strictly prohibited.
 - **[Directive 08] Turn-Sync Audit**:
   - Always verify with `make sync` before finishing turns.
@@ -111,8 +114,10 @@ All 5 inference backends are tested, active, and verified:
 
 1. **Specify Target Files**: Give absolute or repo-relative file paths.
 2. **Include Headers/Footers**: Format code chunks with Directive 04 envelopes.
-3. **Use `uv` in Commands**: e.g., `uv run pytest tests/`, `uv run plowinf backends`.
-4. **Prefer Additive Diffs**: Explain which lines to replace cleanly.
+3. **Use `uv` in Commands**: e.g., `uv run pytest tests/`,
+   `uv run plowinf backends`.
+4. **Prefer Scoped Updates**: Modify tracked source files in place via clean
+   diffs on `feature/*` branches; reserve `_rev001` for generated artifacts.
 5. **Request Turn-Sync**: End recommendations with `make sync` validation.
 
 <!-- end of file: plowinf/docs/gemini_web_agy_guide.md -->
@@ -164,18 +169,25 @@ boundaries, and repository hygiene for all assistants operating within the
 - **Git History Immutability**: Git history must NEVER be overwritten,
   squashed, or lost. Destructive commands (`reset --hard`, `clean -fd`,
   `rebase`) are strictly prohibited in automated workflows.
-- **Additive-Only File Operations**: All file generation operations must be
-  additive. Overwriting existing files in place is prohibited; use versioned
-  revisions (`_rev001`) to preserve all historical drafts.
+- **Scoped Additive File Operations (`_rev001` vs. Git-Tracked Source)**:
+  - **Untracked Artifacts & Worker Outputs**: All generated work products,
+    drafts, reviews, logs, and reports must be strictly additive. Overwriting
+    existing artifacts in place is prohibited; use `AdditiveFileHandler`
+    versioned revisions (`_rev001`, `_rev002`) to preserve historical drafts.
+  - **Git-Tracked Repository Source**: Files in `src/`, `tests/`, `docs/`,
+    `tools/`, and root configs MUST keep canonical filenames in place so
+    Python imports and `uv run pytest` collection remain deterministic without
+    duplicate `_revNNN` modules. Version history for tracked source is
+    preserved via atomic Git commits on `feature/*` or `fix/*` branches.
 
 ### [Directive 08] AUTOMATED TURN-SYNC HANDOVER
 - Run `make sync` at turn completion to verify git status, run tests, and stage
   commits cleanly.
 
 ### [Directive 14] MODEL QUOTA PRESERVATION & LOCAL INFERENCE
-- Maximize use of local offline models (Ollama, GGUF, llama2.c, vLLM) for routine
-  code generation, docstrings, reviews, and test authoring to preserve cloud
-  model quotas.
+- Maximize use of local offline models (Ollama, GGUF, llama2.c, vLLM) for
+  routine code generation, docstrings, reviews, and test authoring to preserve
+  cloud model quotas.
 
 ### [Directive 15] DUAL-AGENT COORDINATION
 - Co-exist cleanly with other assistants using distinct branch namespaces
@@ -201,7 +213,8 @@ boundaries, and repository hygiene for all assistants operating within the
 [project]
 name = "plowinf"
 version = "0.1.0"
-description = "Offline AI inference engine, SLM code worker, and queue processor"
+description = """Offline AI inference engine, SLM code worker,
+and queue processor"""
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
@@ -237,9 +250,9 @@ python_functions = ["test_*"]
 # (Core inference backend interfaces and adapters)
 # Highlights:
 # - SLMBackend: Abstract interface (is_available, generate, list_models)
-# - OllamaBackend: Dynamic GGUF registration, tags, parameter tuning, generate_stream
-# - OpenAICompatBackend: Auto-discovers v1 endpoint (port 8000 or 11434), standard completions
-# - LlamaCppCliBackend: Spawns llama-cli on local GGUF with --single-turn --simple-io
+# - OllamaBackend: Dynamic GGUF registration, tags, parameter tuning, stream
+# - OpenAICompatBackend: Auto-discovers v1 endpoint, standard completions
+# - LlamaCppCliBackend: Spawns llama-cli on local GGUF (--single-turn)
 # - Llama2cBackend: Executes native C runner binary on compact .bin weights
 # - MockBackend: Deterministic offline CI verification
 # - BackendRouter: Resolves best available engine
@@ -250,8 +263,9 @@ python_functions = ["test_*"]
 # (Safety and air-gap guardrails)
 # Highlights:
 # - validate_local_only_url(url): Blocks non-loopback hostnames
+# - validate_additive_artifact_path(path): Protects canonical Git source trees
 # - AdditiveFileHandler: Safe versioned draft revisioning (_rev001)
-# - GitSafetyGuard: Intercepts destructive git operations (--force, reset --hard, clean -fd)
+# - GitSafetyGuard: Intercepts destructive git operations (--force, reset)
 <!-- FILE_END: src/plowinf/safety.py -->
 
 <!-- FILE_START: src/plowinf/queue.py -->
@@ -267,16 +281,16 @@ python_functions = ["test_*"]
 # Path: plowinf/src/plowinf/worker.py
 # (Autonomous code worker engine)
 # Highlights:
-# - build_prompt(action, code, prompt): Templates for review, test, docstring, prompt
-# - process_task(task): Dispatches to BackendRouter, writes work products additively
-# - emit_heartbeat(): Emits status, RSS memory, task metrics to logs/heartbeat/plowinf.json
+# - build_prompt(action, code, prompt): Templates for review, test, docstring
+# - process_task(task): Dispatches to BackendRouter, writes work products
+# - emit_heartbeat(): Emits status, RSS memory, task metrics to logs
 # - run_daemon(): Background polling loop with signal handling (SIGINT, SIGTERM)
 <!-- FILE_END: src/plowinf/worker.py -->
 
 <!-- FILE_START: tools/test_backends_perf.py -->
 # Path: plowinf/tools/test_backends_perf.py
 # (Multi-backend comparative benchmark suite)
-# Measures average latency, word throughput, pass distributions, and RSS memory
+# Measures average latency, word throughput, pass distributions, and RSS
 # Run via: uv run tools/test_backends_perf.py
 <!-- FILE_END: tools/test_backends_perf.py -->
 

@@ -34,8 +34,11 @@ from .queue import (
 from .safety import (
     AdditiveFileHandler,
     AirGapViolationError,
+    CANONICAL_ROOT_FILES,
+    CANONICAL_SOURCE_DIRS,
     GitDestructiveOperationError,
     GitSafetyGuard,
+    validate_additive_artifact_path,
     validate_local_only_url,
 )
 from .worker import (
@@ -49,6 +52,8 @@ __all__ = [
     "AdditiveFileHandler",
     "AirGapViolationError",
     "BackendRouter",
+    "CANONICAL_ROOT_FILES",
+    "CANONICAL_SOURCE_DIRS",
     "CodePatcher",
     "CodeWorker",
     "FileTaskQueue",
@@ -68,6 +73,7 @@ __all__ = [
     "extract_code_block",
     "get_telemetry_snapshot",
     "parse_work_product_metadata",
+    "validate_additive_artifact_path",
     "validate_local_only_url",
     "wrap_markdown_text",
 ]

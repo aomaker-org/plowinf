@@ -5,10 +5,13 @@ from pathlib import Path
 import pytest
 
 from plowinf.safety import (
+    CANONICAL_ROOT_FILES,
+    CANONICAL_SOURCE_DIRS,
     AdditiveFileHandler,
     AirGapViolationError,
     GitDestructiveOperationError,
     GitSafetyGuard,
+    validate_additive_artifact_path,
     validate_local_only_url,
 )
 
@@ -94,6 +97,67 @@ def test_git_safety_guard_allows_additive_commands():
     ]
     for cmd in safe_commands:
         GitSafetyGuard.audit_command_safety(cmd)  # Must not raise
+
+
+def test_validate_additive_artifact_path_allows_external_tmp(tmp_path):
+    target = tmp_path / "notes.md"
+    validated = validate_additive_artifact_path(target)
+    assert validated == target.resolve()
+
+
+def test_validate_additive_artifact_path_allows_workspace_artifacts(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    allowed_rel_paths = [
+        "workspace/work_products/docstrings/task_001.md",
+        "logs/heartbeat/plowinf.json",
+        "queue/task_001.json",
+        "artifacts/benchmarks/run.json",
+    ]
+    for rel in allowed_rel_paths:
+        target = repo_root / rel
+        validated = validate_additive_artifact_path(target, repo_root=repo_root)
+        assert validated == target.resolve()
+
+
+def test_validate_additive_artifact_path_rejects_canonical_sources(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    blocked_rel_paths = [
+        "src/plowinf/worker.py",
+        "tests/test_safety.py",
+        "docs/gemini_web_agy_guide.md",
+        "tools/test_backends_perf.py",
+    ]
+    for rel in blocked_rel_paths:
+        target = repo_root / rel
+        with pytest.raises(ValueError, match="Directive 07 violation"):
+            validate_additive_artifact_path(target, repo_root=repo_root)
+
+
+def test_validate_additive_artifact_path_rejects_canonical_root_files(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    for root_file in CANONICAL_ROOT_FILES:
+        target = repo_root / root_file
+        with pytest.raises(ValueError, match="Directive 07 violation"):
+            validate_additive_artifact_path(target, repo_root=repo_root)
+
+
+def test_additive_file_handler_rejects_canonical_source(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    target = repo_root / "src" / "plowinf" / "module.py"
+
+    with pytest.raises(ValueError, match="Directive 07 violation"):
+        AdditiveFileHandler.safe_write_additive(
+            target,
+            "new_content = True",
+            repo_root=repo_root,
+        )
+
+    with pytest.raises(ValueError, match="Directive 07 violation"):
+        AdditiveFileHandler.get_additive_path(target, repo_root=repo_root)
 
 
 # end of file: plowinf/tests/test_safety.py

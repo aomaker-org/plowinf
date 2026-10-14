@@ -13,8 +13,6 @@ This guide provides a high-density, concise briefing for `gemini.google.com`
 - **agy (Antigravity CLI)**: Local execution agent on Linux baremetal `fg26`.
   Executes commands, runs tests via `uv`, manages Git branches, audits code.
 
----
-
 ## 2. Host Environment & Topology
 
 - **Host Machine**: `fg26` (Ubuntu 24.04 LTS, x86_64, 12 GB physical RAM).
@@ -25,7 +23,6 @@ This guide provides a high-density, concise briefing for `gemini.google.com`
 - **Related Local Repositories**:
   - `/home/fekerr/src/llama.cpp`: Upstream C++ engine & built binaries.
   - `/home/fekerr/src/clouds-labs`: Distributed systems, labs/llama2.c.
-  - `/home/fekerr/src/local-code-plower`: Legacy plower fleet supervisor.
 - **Local Model Weights & Runtimes**:
   - `/home/fekerr/ai_models/qwen2-1.5b.gguf`: 892 MB Q4 quantized GGUF.
   - `/home/fekerr/ai_models/stories15M.bin`: 58 MB compact Llama2.c weights.
@@ -33,8 +30,6 @@ This guide provides a high-density, concise briefing for `gemini.google.com`
   - OpenAI-Compat: `http://127.0.0.1:11434/v1` or port 8000.
   - `llama-cli`: `/home/fekerr/.local/bin/llama-cli` (built from source).
   - `run` (llama2.c): `/home/fekerr/src/clouds-labs/labs/llama2.c/run`.
-
----
 
 ## 3. Supported Model Backends & Performance Profiles
 
@@ -45,7 +40,8 @@ All 5 inference backends are tested, active, and verified:
    - Latency: ~1.95s on CPU (warm), ~6.6 words/s (~9.5 tok/s).
    - Features: Dynamic `.gguf` auto-registration via `/api/create`, streaming.
 2. **`openai_compat`** (`OpenAICompatBackend`):
-   - Protocol: HTTP `/v1/chat/completions` on `127.0.0.1:11434/v1` or `:8000/v1`.
+   - Protocol: HTTP `/v1/chat/completions` on `127.0.0.1:11434/v1`
+     or `:8000/v1`.
    - Latency: ~2.12s on CPU, ~6.1 words/s (~8.8 tok/s).
    - Features: Standard OpenAI wire protocol compatibility with vLLM/LM Studio.
 3. **`llama_cpp_cli`** (`LlamaCppCliBackend`):
@@ -59,11 +55,7 @@ All 5 inference backends are tested, active, and verified:
 5. **`mock`** (`MockBackend`):
    - Deterministic offline heuristic for CI test suites (<0.1 ms).
 
----
-
 ## 4. Non-Negotiable Directives for AGY (Rules to Respect)
-
-When generating code, scripts, or instructions for `agy`, ensure compliance:
 
 - **[Directive 01] Mandatory `uv`**:
   - Always use `uv run python ...`, `uv pip ...`, `uv venv`.
@@ -78,9 +70,11 @@ When generating code, scripts, or instructions for `agy`, ensure compliance:
   - File Footer:
     - Markdown: `<!-- end of file: <path> -->`
     - Python/Shell: `# end of file: <path>`
-- **[Directive 07] Git Branch & Additive Safety**:
+- **[Directive 07] Git Branch & Scoped Additive Safety**:
   - Dedicated feature branches (`feature/*`); never commit to `main`.
-  - Additive file operations (no destructive file overwriting).
+  - Untracked worker outputs/drafts use `_rev001` additive revisions.
+  - Git-tracked source (`src/`, `tests/`, `docs/`, `tools/`, configs) is
+    updated in place on canonical filenames and versioned via Git commits.
   - `git push --force` is strictly prohibited.
 - **[Directive 08] Turn-Sync Audit**:
   - Always verify with `make sync` before finishing turns.
@@ -90,16 +84,14 @@ When generating code, scripts, or instructions for `agy`, ensure compliance:
   - 100% offline local inference (`127.0.0.1`, `localhost`).
   - Outbound cloud AI APIs (OpenAI/Anthropic/Gemini API) are prohibited.
 
----
-
 ## 5. Optimal Prompting Pattern for Gemini-Web -> AGY
-
-To give `agy` tasks with zero ambiguity and instant execution readiness:
 
 1. **Specify Target Files**: Give absolute or repo-relative file paths.
 2. **Include Headers/Footers**: Format code chunks with Directive 04 envelopes.
-3. **Use `uv` in Commands**: e.g., `uv run pytest tests/`, `uv run plowinf backends`.
-4. **Prefer Additive Diffs**: Explain which lines to replace cleanly.
+3. **Use `uv` in Commands**: e.g., `uv run pytest tests/`,
+   `uv run plowinf backends`.
+4. **Prefer Scoped Updates**: Modify tracked source files in place via clean
+   diffs on `feature/*` branches; reserve `_rev001` for generated artifacts.
 5. **Request Turn-Sync**: End recommendations with `make sync` validation.
 
 <!-- end of file: plowinf/docs/gemini_web_agy_guide.md -->

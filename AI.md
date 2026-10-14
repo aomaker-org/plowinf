@@ -8,25 +8,6 @@ boundaries, and repository hygiene for all assistants operating within the
 
 ---
 
-## [Architecture] Two-Tier AI Directive Hierarchy
-
-To minimize recursive token burn and preserve context quotas in `agy`,
-directives are partitioned into a two-tier hierarchy:
-
-1. **Level-1 Executive Directives Kernel (Embedded Below)**:
-   The foundational operational guardrails required on every prompt turn:
-   - `[Directive 01]`: Challenge human input, mandatory `uv`, shell safety.
-   - `[Directive 02]`: Full I/O logging; zero `/dev/null` or silent suppression.
-   - `[Directive 04]`: Max 80 columns (text/md), max 120 chars (code); headers.
-   - `[Directive 07]`: Branch-per-feature; clean `main` guardrails; force-push.
-   - `[Directive 08]`: Automated turn-sync handover via `make sync`.
-   - `[Directive 14]`: Model quota preservation & local inference utilization.
-   - `[Directive 15]`: Dual-agent (`agy` & `copilot`) coordination.
-   - `[Directive 17]`: Process heartbeats and telemetry emission.
-   - `[Directive 18]`: Zero-cloud survivability and offline execution.
-
----
-
 ## Level-1 Executive Directives Kernel
 
 ### [Directive 01] OPERATIONAL BOUNDARIES & COMMAND INTEGRITY
@@ -62,18 +43,25 @@ directives are partitioned into a two-tier hierarchy:
 - **Git History Immutability**: Git history must NEVER be overwritten,
   squashed, or lost. Destructive commands (`reset --hard`, `clean -fd`,
   `rebase`) are strictly prohibited in automated workflows.
-- **Additive-Only File Operations**: All file generation operations must be
-  additive. Overwriting existing files in place is prohibited; use versioned
-  revisions (`_rev001`) to preserve all historical drafts.
+- **Scoped Additive File Operations (`_rev001` vs. Git-Tracked Source)**:
+  - **Untracked Artifacts & Worker Outputs**: All generated work products,
+    drafts, reviews, logs, and reports must be strictly additive. Overwriting
+    existing artifacts in place is prohibited; use `AdditiveFileHandler`
+    versioned revisions (`_rev001`, `_rev002`) to preserve historical drafts.
+  - **Git-Tracked Repository Source**: Files in `src/`, `tests/`, `docs/`,
+    `tools/`, and root configs MUST keep canonical filenames in place so
+    Python imports and `uv run pytest` collection remain deterministic without
+    duplicate `_revNNN` modules. Version history for tracked source is
+    preserved via atomic Git commits on `feature/*` or `fix/*` branches.
 
 ### [Directive 08] AUTOMATED TURN-SYNC HANDOVER
 - Run `make sync` at turn completion to verify git status, run tests, and stage
   commits cleanly.
 
 ### [Directive 14] MODEL QUOTA PRESERVATION & LOCAL INFERENCE
-- Maximize use of local offline models (Ollama, GGUF, llama2.c, vLLM) for routine
-  code generation, docstrings, reviews, and test authoring to preserve cloud
-  model quotas.
+- Maximize use of local offline models (Ollama, GGUF, llama2.c, vLLM) for
+  routine code generation, docstrings, reviews, and test authoring to preserve
+  cloud model quotas.
 
 ### [Directive 15] DUAL-AGENT COORDINATION
 - Co-exist cleanly with other assistants using distinct branch namespaces
