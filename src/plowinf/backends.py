@@ -22,6 +22,31 @@ from .safety import validate_local_only_url
 logger = logging.getLogger("plowinf.backends")
 
 
+def get_optimal_physical_threads() -> int:
+    """Detect physical CPU cores to prevent Haswell SMT cache contention.
+
+    On x86_64 host (fg26), binding threads to physical cores rather than
+    logical hyperthreads maximizes L1/L2 cache locality during GEMV decoding.
+    """
+    try:
+        cpu_info = Path("/proc/cpuinfo").read_text(encoding="utf-8")
+        socket_core: set[tuple[str, str]] = set()
+        current_socket = "0"
+        current_core = "0"
+        for line in cpu_info.splitlines():
+            if line.startswith("physical id"):
+                current_socket = line.split(":")[-1].strip()
+            elif line.startswith("core id"):
+                current_core = line.split(":")[-1].strip()
+                socket_core.add((current_socket, current_core))
+        if socket_core:
+            return max(1, len(socket_core))
+    except Exception:
+        pass
+    logical = os.cpu_count() or 4
+    return max(1, logical // 2)
+
+
 class SLMBackend(ABC):
     """Abstract interface for local code worker and inference backends."""
 
@@ -151,7 +176,8 @@ class OllamaBackend(SLMBackend):
         url = f"{self.base_url}/api/generate"
         options: Dict[str, Any] = {
             "temperature": kwargs.get("temperature", 0.2),
-            "num_predict": kwargs.get("max_tokens", 1024),
+            "num_predict": kwargs.get("max_tokens", kwargs.get("num_predict", 1024)),
+            "num_thread": kwargs.get("num_thread", get_optimal_physical_threads()),
         }
         if "top_p" in kwargs:
             options["top_p"] = kwargs["top_p"]
@@ -190,7 +216,8 @@ class OllamaBackend(SLMBackend):
             "stream": True,
             "options": {
                 "temperature": kwargs.get("temperature", 0.2),
-                "num_predict": kwargs.get("max_tokens", 1024),
+                "num_predict": kwargs.get("max_tokens", kwargs.get("num_predict", 1024)),
+                "num_thread": kwargs.get("num_thread", get_optimal_physical_threads()),
             },
         }
         if system_prompt:
@@ -314,13 +341,13 @@ class LlamaCppCliBackend(SLMBackend):
         self,
         binary_path: Optional[str] = None,
         model_path: Optional[str] = None,
-        threads: int = 4,
+        threads: Optional[int] = None,
         timeout: float = 120.0,
     ):
         super().__init__(name="llama_cpp_cli")
         self.binary_path = binary_path or self._find_binary()
         self.model_path = model_path or self._find_model()
-        self.threads = threads
+        self.threads = threads if threads is not None else get_optimal_physical_threads()
         self.timeout = timeout
 
     def _find_binary(self) -> str:
@@ -371,10 +398,18 @@ class LlamaCppCliBackend(SLMBackend):
             full_prompt,
             "-t",
             str(self.threads),
+            "-c",
+            str(kwargs.get("ctx_size", 4096)),
             "-n",
-            str(kwargs.get("max_tokens", 512)),
+            str(kwargs.get("max_tokens", kwargs.get("num_predict", 512))),
             "--temp",
             str(kwargs.get("temperature", 0.2)),
+            "-fa",
+            "on",
+            "-b",
+            "2048",
+            "-ub",
+            "512",
             "--single-turn",
             "--simple-io",
         ]
