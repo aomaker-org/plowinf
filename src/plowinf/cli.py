@@ -52,7 +52,10 @@ def build_backend(name: Optional[str], model: Optional[str] = None) -> SLMBacken
             kwargs["model"] = model
         return OpenAICompatBackend(**kwargs)
     elif name == "llama_cpp":
-        return LlamaCppCliBackend(model_path=model or "")
+        kwargs = {}
+        if model:
+            kwargs["model_path"] = model
+        return LlamaCppCliBackend(**kwargs)
     elif name == "llama2c":
         kwargs = {}
         if model:
@@ -107,7 +110,11 @@ def main() -> None:
     p_bench.add_argument("--backend", choices=backend_choices, default="auto")
     p_bench.add_argument("--model", help="Specific model tag or path")
     p_bench.add_argument("--runs", type=int, default=3, help="Number of benchmark iterations")
-    p_bench.add_argument("--prompt", default="Write a quicksort function in Python with type hints.", help="Benchmark prompt")
+    p_bench.add_argument(
+        "--prompt",
+        default="Write a quicksort function in Python with type hints.",
+        help="Benchmark prompt",
+    )
 
     # Command: enqueue
     p_enq = subparsers.add_parser("enqueue", help="Add asynchronous task to file queue")

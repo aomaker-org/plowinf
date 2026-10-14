@@ -46,7 +46,7 @@ class SLMBackend(ABC):
 class OllamaBackend(SLMBackend):
     """Adapter for local Ollama HTTP API (default: http://127.0.0.1:11434).
 
-    Supports standard Ollama model tags (e.g. 'qwen2:1.5b') or raw local
+    Supports standard Ollama model tags (e.g. 'qwen2.5-coder:1.5b') or raw local
     '.gguf' file paths. When passed a '.gguf' file, it automatically registers
     the model with the Ollama daemon via the '/api/create' endpoint.
     """
@@ -54,7 +54,7 @@ class OllamaBackend(SLMBackend):
     def __init__(
         self,
         base_url: str = "http://127.0.0.1:11434",
-        model: str = "qwen2:1.5b",
+        model: str = "qwen2.5-coder:1.5b",
         timeout: Optional[float] = None,
     ):
         validate_local_only_url(base_url)
@@ -112,6 +112,29 @@ class OllamaBackend(SLMBackend):
 
             self._effective_model = registered_name
             return self._effective_model
+
+        if self.raw_model_spec == "qwen2.5-coder:1.5b":
+            try:
+                available = self.list_models()
+                if available:
+                    has_coder = any(
+                        m == "qwen2.5-coder:1.5b" or m.startswith("qwen2.5-coder:1.5b:")
+                        for m in available
+                    )
+                    if not has_coder:
+                        has_qwen2 = any(
+                            m == "qwen2:1.5b" or m.startswith("qwen2:1.5b:")
+                            for m in available
+                        )
+                        if has_qwen2:
+                            logger.info(
+                                "Model 'qwen2.5-coder:1.5b' not found in Ollama; "
+                                "falling back to 'qwen2:1.5b'"
+                            )
+                            self._effective_model = "qwen2:1.5b"
+                            return self._effective_model
+            except Exception:
+                pass
 
         self._effective_model = self.raw_model_spec
         return self._effective_model
@@ -191,7 +214,7 @@ class OpenAICompatBackend(SLMBackend):
     def __init__(
         self,
         base_url: Optional[str] = None,
-        model: str = "default",
+        model: str = "qwen2.5-coder:1.5b",
         api_key: str = "EMPTY",
         timeout: Optional[float] = None,
     ):
@@ -237,12 +260,25 @@ class OpenAICompatBackend(SLMBackend):
         return False
 
     def generate(self, prompt: str, system_prompt: Optional[str] = None, **kwargs) -> str:
-        # Resolve model name if set to default
+        # Resolve model name if set to default or standard coder model
         active_model = self.model
-        if active_model == "default":
+        if active_model in ("default", "qwen2.5-coder:1.5b"):
             models = self.list_models()
             if models:
-                active_model = models[0]
+                if any(m == "qwen2.5-coder:1.5b" or m.startswith("qwen2.5-coder:1.5b:") for m in models):
+                    coder_matches = [
+                        m for m in models if m == "qwen2.5-coder:1.5b" or m.startswith("qwen2.5-coder:1.5b:")
+                    ]
+                    active_model = coder_matches[0]
+                elif any(m == "qwen2:1.5b" or m.startswith("qwen2:1.5b:") for m in models):
+                    qwen2_matches = [
+                        m for m in models if m == "qwen2:1.5b" or m.startswith("qwen2:1.5b:")
+                    ]
+                    active_model = qwen2_matches[0]
+                elif self.model in models:
+                    active_model = self.model
+                else:
+                    active_model = models[0]
 
         url = f"{self.base_url}/chat/completions"
         headers = {
@@ -303,6 +339,7 @@ class LlamaCppCliBackend(SLMBackend):
     def _find_model(self) -> str:
         candidates = [
             os.getenv("LLAMA_MODEL_PATH", ""),
+            os.path.expanduser("~/ai_models/qwen2.5-coder-1.5b.gguf"),
             os.path.expanduser("~/ai_models/qwen2-1.5b.gguf"),
         ]
         for c in candidates:
@@ -311,7 +348,11 @@ class LlamaCppCliBackend(SLMBackend):
         return ""
 
     def is_available(self) -> bool:
-        if not (shutil.which(self.binary_path) or (os.path.isfile(self.binary_path) and os.access(self.binary_path, os.X_OK))):
+        has_bin = (
+            shutil.which(self.binary_path)
+            or (os.path.isfile(self.binary_path) and os.access(self.binary_path, os.X_OK))
+        )
+        if not has_bin:
             return False
         if not self.model_path or not os.path.exists(self.model_path):
             return False
@@ -361,7 +402,10 @@ class LlamaCppCliBackend(SLMBackend):
             parts = raw.split("> ")
             if len(parts) >= 2:
                 content_after = parts[-1]
-                lines = [l for l in content_after.splitlines() if not l.strip().startswith("[ Prompt:") and l.strip() != "Exiting..."]
+                lines = [
+                    l for l in content_after.splitlines()
+                    if not l.strip().startswith("[ Prompt:") and l.strip() != "Exiting..."
+                ]
                 return "\n".join(lines).strip()
         return raw.strip()
 

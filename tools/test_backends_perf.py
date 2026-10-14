@@ -41,7 +41,11 @@ def benchmark_backend(backend: SLMBackend, prompt: str, runs: int = 3, max_token
             rss = get_telemetry_snapshot().get("rss_mb", 0)
             approx_tokens = max(1, len(out.split()))
             speed = approx_tokens / dt if dt > 0 else 0
-            print(f"    Pass #{r}: {dt*1000.0:7.1f} ms | ~{approx_tokens:3d} words | ~{speed:5.1f} words/s | RSS: {rss} MB")
+            ms = dt * 1000.0
+            print(
+                f"    Pass #{r}: {ms:7.1f} ms | ~{approx_tokens:3d} words | "
+                f"~{speed:5.1f} words/s | RSS: {rss} MB"
+            )
         except Exception as exc:
             print(f"    [!] Pass #{r} failed: {exc}")
             return {"name": backend.name, "available": True, "error": str(exc)}
@@ -75,8 +79,8 @@ def main():
     backends: List[SLMBackend] = [
         MockBackend(),
         Llama2cBackend(),
-        OllamaBackend(model="qwen2:1.5b"),
-        OpenAICompatBackend(model="qwen2:1.5b"),
+        OllamaBackend(model="qwen2.5-coder:1.5b"),
+        OpenAICompatBackend(model="qwen2.5-coder:1.5b"),
         LlamaCppCliBackend(threads=4),
     ]
 

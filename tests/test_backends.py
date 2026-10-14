@@ -6,6 +6,7 @@ import pytest
 
 from plowinf.backends import (
     BackendRouter,
+    LlamaCppCliBackend,
     MockBackend,
     OllamaBackend,
     OpenAICompatBackend,
@@ -91,6 +92,43 @@ def test_ollama_successful_generate_with_options(mock_post):
     payload = mock_post.call_args[1]["json"]
     assert payload["options"]["temperature"] == 0.5
     assert payload["options"]["num_predict"] == 256
+
+
+def test_ollama_fallback_to_qwen2():
+    with patch("requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "models": [{"name": "qwen2:1.5b"}, {"name": "llama3:8b"}]
+        }
+        mock_get.return_value = mock_resp
+
+        b = OllamaBackend()
+        assert b.raw_model_spec == "qwen2.5-coder:1.5b"
+        resolved = b._resolve_model()
+        assert resolved == "qwen2:1.5b"
+
+
+def test_ollama_selects_coder_when_present():
+    with patch("requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "models": [{"name": "qwen2.5-coder:1.5b"}, {"name": "qwen2:1.5b"}]
+        }
+        mock_get.return_value = mock_resp
+
+        b = OllamaBackend()
+        assert b._resolve_model() == "qwen2.5-coder:1.5b"
+
+
+def test_llama_cpp_model_discovery(tmp_path):
+    coder_path = tmp_path / "qwen2.5-coder-1.5b.gguf"
+    coder_path.touch()
+    with patch("os.path.expanduser") as mock_expand:
+        mock_expand.side_effect = lambda p: str(coder_path) if "qwen2.5-coder" in p else "/nonexistent"
+        b = LlamaCppCliBackend()
+        assert b.model_path == str(coder_path)
 
 
 # end of file: plowinf/tests/test_backends.py

@@ -13,7 +13,7 @@ Repository: <https://github.com/aomaker-org/plowinf>
 ## Key Features
 
 - **Multi-Backend Inference Router**:
-  - **Ollama**: Native model tags (`qwen2:1.5b`), dynamic
+  - **Ollama**: Native model tags (`qwen2.5-coder:1.5b`), dynamic
     `.gguf` auto-registration, and real-time token streaming.
   - **OpenAI-Compatible**: Integrates with vLLM, LM Studio, and LiteRT-LM.
   - **llama2.c**: Zero-dependency C runner execution on CPU (~23+ tok/s).
@@ -102,7 +102,7 @@ make test
 plowinf/
 ├── src/
 │   ├── plowinf/             # Core inference & processing package
-│   │   ├── backends.py      # Multi-backend inference adapters (Ollama, vLLM, llama.cpp)
+│   │   ├── backends.py      # Multi-backend inference adapters
 │   │   ├── cli.py           # plowinf command-line interface
 │   │   ├── forensics.py     # SHA-256 cryptographic audit ledger & telemetry
 │   │   ├── patcher.py       # Safe diff and patch application engine

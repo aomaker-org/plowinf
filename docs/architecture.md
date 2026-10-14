@@ -57,7 +57,7 @@ Key design goals:
 
 1. **Ollama HTTP API (`OllamaBackend`)**:
    - High-throughput endpoint on `http://127.0.0.1:11434`.
-   - Supports registered tags (e.g. `qwen2:1.5b`) and
+   - Supports registered tags (e.g. `qwen2.5-coder:1.5b`) and
      dynamic GGUF auto-registration via `/api/create`.
    - Supports token streaming via `generate_stream()`.
 2. **OpenAI-Compatible Endpoints (`OpenAICompatBackend`)**:

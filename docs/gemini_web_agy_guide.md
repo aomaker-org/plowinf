@@ -24,9 +24,10 @@ This guide provides a high-density, concise briefing for `gemini.google.com`
   - `/home/fekerr/src/llama.cpp`: Upstream C++ engine & built binaries.
   - `/home/fekerr/src/clouds-labs`: Distributed systems, labs/llama2.c.
 - **Local Model Weights & Runtimes**:
+  - `/home/fekerr/ai_models/qwen2.5-coder-1.5b.gguf`: 940 MB Q4_K_M GGUF.
   - `/home/fekerr/ai_models/qwen2-1.5b.gguf`: 892 MB Q4 quantized GGUF.
   - `/home/fekerr/ai_models/stories15M.bin`: 58 MB compact Llama2.c weights.
-  - Ollama Daemon: `http://127.0.0.1:11434` (Ollama tag `qwen2:1.5b`).
+  - Ollama Daemon: `http://127.0.0.1:11434` (default `qwen2.5-coder:1.5b`).
   - OpenAI-Compat: `http://127.0.0.1:11434/v1` or port 8000.
   - `llama-cli`: `/home/fekerr/.local/bin/llama-cli` (built from source).
   - `run` (llama2.c): `/home/fekerr/src/clouds-labs/labs/llama2.c/run`.

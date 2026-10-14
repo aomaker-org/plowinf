@@ -14,14 +14,15 @@ SECTION 1: SYSTEM & WORKSPACE SUMMARY
 - Target Host: Ubuntu Linux 24.04 LTS (x86_64, 12GB RAM, host: fg26)
 - Runtime: Python 3.12 managed via uv (0.12.15)
 - Active Local Engines:
-  * Ollama on http://127.0.0.1:11434 (model: qwen2:1.5b)
+  * Ollama on http://127.0.0.1:11434 (model: qwen2.5-coder:1.5b)
   * OpenAI-Compatible on http://127.0.0.1:11434/v1 or port 8000
   * llama-cli in ~/.local/bin/llama-cli (built from ~/src/llama.cpp)
   * llama2.c runner in ~/src/clouds-labs/labs/llama2.c/run
 - Local Model Weights:
+  * ~/ai_models/qwen2.5-coder-1.5b.gguf (940 MB Q4_K_M GGUF)
   * ~/ai_models/qwen2-1.5b.gguf (892 MB Q4 quantized GGUF)
   * ~/ai_models/stories15M.bin (58 MB compact Llama2.c weights)
-- Verification State: 55/55 unit tests passing via `uv run pytest`
+- Verification State: 54/54 unit tests passing via `uv run pytest`
 
 <!-- FILE_START: docs/gemini_web_agy_guide.md -->
 # Path: plowinf/docs/gemini_web_agy_guide.md
@@ -50,9 +51,10 @@ This guide provides a high-density, concise briefing for `gemini.google.com`
   - `/home/fekerr/src/llama.cpp`: Upstream C++ engine & built binaries.
   - `/home/fekerr/src/clouds-labs`: Distributed systems, labs/llama2.c.
 - **Local Model Weights & Runtimes**:
+  - `/home/fekerr/ai_models/qwen2.5-coder-1.5b.gguf`: 940 MB Q4_K_M GGUF.
   - `/home/fekerr/ai_models/qwen2-1.5b.gguf`: 892 MB Q4 quantized GGUF.
   - `/home/fekerr/ai_models/stories15M.bin`: 58 MB compact Llama2.c weights.
-  - Ollama Daemon: `http://127.0.0.1:11434` (Ollama tag `qwen2:1.5b`).
+  - Ollama Daemon: `http://127.0.0.1:11434` (default `qwen2.5-coder:1.5b`).
   - OpenAI-Compat: `http://127.0.0.1:11434/v1` or port 8000.
   - `llama-cli`: `/home/fekerr/.local/bin/llama-cli` (built from source).
   - `run` (llama2.c): `/home/fekerr/src/clouds-labs/labs/llama2.c/run`.
@@ -311,5 +313,13 @@ python_functions = ["test_*"]
 # - emit_mergekit_moe_yaml(): 4-expert mergekit-moe config for plowinf
 # - run_hf_profiler(): PyTorch BI_i layer influence and SwiGLU sparsity
 <!-- FILE_END: tools/qwen_distill_moe_lab.py -->
+
+<!-- FILE_START: tools/audit_20l_surgery.py -->
+# Path: plowinf/tools/audit_20l_surgery.py
+# (Weight norm audit and A/B code AST validation across 20L vs 28L models)
+# Highlights:
+# - audit_layer_mapping(): GGUF tensor Frobenius/RMS norms layer mapping
+# - run_ab_benchmark(): AST and JSON validation prompts on local Ollama
+<!-- FILE_END: tools/audit_20l_surgery.py -->
 
 <!-- end of file: plowinf/docs/gemweb_context_pack.md -->

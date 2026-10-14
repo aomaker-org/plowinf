@@ -15,10 +15,13 @@ def test_build_backend_mock():
 
 
 def test_build_backend_ollama():
-    b = build_backend("ollama", model="qwen2:1.5b")
+    b = build_backend("ollama")
     assert isinstance(b, OllamaBackend)
     assert b.name == "ollama"
-    assert b.raw_model_spec == "qwen2:1.5b"
+    assert b.raw_model_spec == "qwen2.5-coder:1.5b"
+
+    b_custom = build_backend("ollama", model="qwen2:1.5b")
+    assert b_custom.raw_model_spec == "qwen2:1.5b"
 
 
 def test_cli_backends_command(capsys):

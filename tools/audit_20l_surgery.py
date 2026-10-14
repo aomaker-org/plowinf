@@ -344,9 +344,9 @@ def run_ab_benchmark(models: list[str]) -> None:
 
 
 def main() -> int:
-    models = ["qwen2:1.5b", "qwen2.5-1.5b-20L:latest"]
+    models = ["qwen2.5-coder:1.5b", "qwen2:1.5b", "qwen2.5-1.5b-20L:latest"]
     try:
-        audit_layer_mapping(models[0], models[1])
+        audit_layer_mapping("qwen2:1.5b", "qwen2.5-1.5b-20L:latest")
         run_ab_benchmark(models)
         return 0
     except requests.RequestException as exc:
