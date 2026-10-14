@@ -1,0 +1,22 @@
+{
+  "parent_model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "d_model": 1536,
+  "d_ff_dense": 8960,
+  "num_layers": 28,
+  "partition": {
+    "shared_expert": {
+      "count": 1,
+      "intermediate_size": 1792,
+      "role": "Universal syntax & token grammar (always active)"
+    },
+    "routed_experts": {
+      "count": 4,
+      "intermediate_size": 1792,
+      "active_top_k": 1,
+      "role": "Domain-specific reasoning (review, test, refactor, docs)"
+    }
+  },
+  "estimated_active_params_m": 850.2,
+  "estimated_total_params_m": 1543.7,
+  "estimated_haswell_tps": 27.3
+}

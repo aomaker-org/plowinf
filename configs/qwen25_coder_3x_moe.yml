@@ -1,0 +1,20 @@
+# Path: plowinf/configs/qwen25_coder_3x_moe.yml
+# Multi-specialist upcycling spec for plowinf code tasks on fg26
+base_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
+gate_mode: hidden
+dtype: bfloat16
+experts_per_token: 1
+experts:
+  - source_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
+    positive_prompts:
+      - "Review the following Python/C code for bugs, security vulnerabilities, and memory safety."
+      - "Perform a rigorous code review focusing on race conditions and edge cases."
+  - source_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
+    positive_prompts:
+      - "Write comprehensive pytest unit tests covering boundary conditions and mock fixtures."
+      - "Generate robust test assertions for this module."
+  - source_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
+    positive_prompts:
+      - "Refactor and optimize this algorithm for minimal memory footprint and high performance."
+      - "Clean up code structure and implement idiomatic type annotations."
+# end of file: plowinf/configs/qwen25_coder_3x_moe.yml

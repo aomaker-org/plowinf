@@ -22,7 +22,7 @@ SECTION 1: SYSTEM & WORKSPACE SUMMARY
   * ~/ai_models/qwen2.5-coder-1.5b.gguf (940 MB Q4_K_M GGUF)
   * ~/ai_models/qwen2-1.5b.gguf (892 MB Q4 quantized GGUF)
   * ~/ai_models/stories15M.bin (58 MB compact Llama2.c weights)
-- Verification State: 54/54 unit tests passing via `uv run pytest`
+- Verification State: 58/58 unit tests passing via `uv run pytest`
 
 <!-- FILE_START: docs/gemini_web_agy_guide.md -->
 # Path: plowinf/docs/gemini_web_agy_guide.md
@@ -321,5 +321,13 @@ python_functions = ["test_*"]
 # - audit_layer_mapping(): GGUF tensor Frobenius/RMS norms layer mapping
 # - run_ab_benchmark(): AST and JSON validation prompts on local Ollama
 <!-- FILE_END: tools/audit_20l_surgery.py -->
+
+<!-- FILE_START: tools/moe_experiment_runner.py -->
+# Path: plowinf/tools/moe_experiment_runner.py
+# (MoE Experiment Runner & Blueprint Generator for plowinf)
+# Highlights:
+# - generate_upcycle_blueprint(): Generates 3-expert mergekit-moe YAML config
+# - generate_moefication_plan(): Outputs Sub-FFN MoEfication partition plan
+<!-- FILE_END: tools/moe_experiment_runner.py -->
 
 <!-- end of file: plowinf/docs/gemweb_context_pack.md -->
