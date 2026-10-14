@@ -21,7 +21,7 @@ SECTION 1: SYSTEM & WORKSPACE SUMMARY
 - Local Model Weights:
   * ~/ai_models/qwen2-1.5b.gguf (892 MB Q4 quantized GGUF)
   * ~/ai_models/stories15M.bin (58 MB compact Llama2.c weights)
-- Verification State: 44/44 unit tests passing via `uv run pytest`
+- Verification State: 55/55 unit tests passing via `uv run pytest`
 
 <!-- FILE_START: docs/gemini_web_agy_guide.md -->
 # Path: plowinf/docs/gemini_web_agy_guide.md
@@ -293,5 +293,23 @@ python_functions = ["test_*"]
 # Measures average latency, word throughput, pass distributions, and RSS
 # Run via: uv run tools/test_backends_perf.py
 <!-- FILE_END: tools/test_backends_perf.py -->
+
+<!-- FILE_START: tools/inspect_gguf_arch.py -->
+# Path: plowinf/tools/inspect_gguf_arch.py
+# (GGUF binary header parser and Ollama architecture comparison inspector)
+# Highlights:
+# - parse_gguf_summary(path): GGUF v2/v3 header, metadata, tensor budgets
+# - resolve_ollama_gguf_blob(tag): Resolves Ollama manifests to blob paths
+# - compare_summaries(): Side-by-side GQA, SwiGLU, parameter & size deltas
+<!-- FILE_END: tools/inspect_gguf_arch.py -->
+
+<!-- FILE_START: tools/qwen_distill_moe_lab.py -->
+# Path: plowinf/tools/qwen_distill_moe_lab.py
+# (Qwen MoE distillation planner and mergekit-moe blueprint generator)
+# Highlights:
+# - calculate_moe_budgets(): Dense vs Upcycled vs Sub-FFN RAM and tok/s
+# - emit_mergekit_moe_yaml(): 4-expert mergekit-moe config for plowinf
+# - run_hf_profiler(): PyTorch BI_i layer influence and SwiGLU sparsity
+<!-- FILE_END: tools/qwen_distill_moe_lab.py -->
 
 <!-- end of file: plowinf/docs/gemweb_context_pack.md -->
