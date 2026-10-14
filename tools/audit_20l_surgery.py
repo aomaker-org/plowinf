@@ -272,6 +272,7 @@ def run_ab_benchmark(models: list[str]) -> None:
     for model in models:
         passed = 0
         tps_list: list[float] = []
+        model_missing = False
         print(f"\n>>> Testing Model: {model}")
         print("-" * 78)
         for task in BENCHMARK_TASKS:
@@ -293,7 +294,17 @@ def run_ab_benchmark(models: list[str]) -> None:
                 allow_redirects=False,
             )
             elapsed = time.perf_counter() - t0
-            resp.raise_for_status()
+            try:
+                resp.raise_for_status()
+            except requests.HTTPError as err:
+                if err.response is not None and err.response.status_code == 404:
+                    print(
+                        f"  [PURGED] Model '{model}' not found in Ollama daemon "
+                        "(cleanly purged)."
+                    )
+                    model_missing = True
+                    break
+                raise
             data = resp.json()
 
             out_text = data.get("response", "")
@@ -314,11 +325,20 @@ def run_ab_benchmark(models: list[str]) -> None:
                 f"  [{status}] {task['id']:<18} | {tok_s:>6.2f} tok/s | "
                 f"{elapsed:>5.2f}s | {detail}"
             )
+        if model_missing:
+            summary[model] = {
+                "passed": 0,
+                "total": len(BENCHMARK_TASKS),
+                "avg_tok_s": 0.0,
+                "purged": True,
+            }
+            continue
         avg_tps = sum(tps_list) / max(len(tps_list), 1)
         summary[model] = {
             "passed": passed,
             "total": len(BENCHMARK_TASKS),
             "avg_tok_s": avg_tps,
+            "purged": False,
         }
 
     print("\n" + "=" * 78)
@@ -327,15 +347,18 @@ def run_ab_benchmark(models: list[str]) -> None:
     for model, stats in summary.items():
         p, tot = stats["passed"], stats["total"]
         tps = stats["avg_tok_s"]
-        verdict = (
-            "HEALTHY (Keep)"
-            if p == tot
-            else (
-                "DEGRADED (Unhealed chop artifacts)"
-                if p > 0
-                else "BROKEN (Purge via `ollama rm`)"
+        if stats.get("purged"):
+            verdict = "PURGED (Cleanly eliminated)"
+        else:
+            verdict = (
+                "HEALTHY (Keep)"
+                if p == tot
+                else (
+                    "DEGRADED (Unhealed chop artifacts)"
+                    if p > 0
+                    else "BROKEN (Purge via `ollama rm`)"
+                )
             )
-        )
         print(
             f"  {model:<28} : {p}/{tot} tasks passed | "
             f"{tps:>6.2f} tok/s | {verdict}"
