@@ -1,0 +1,69 @@
+# ==============================================================================
+# plowinf: config_env_models
+# Target: Ubuntu Linux (Native / fg26) - Model Surgery & Distillation Substrate
+# ==============================================================================
+
+# 1. Cleanse foreign venv
+if [ -n "$VIRTUAL_ENV" ]; then
+    deactivate 2>/dev/null || true
+    unset VIRTUAL_ENV
+fi
+
+# 2. Node identity discovery
+get_node_name() {
+    if [ -f "${HOME}/.node_identity" ]; then
+        cat "${HOME}/.node_identity" | tr -d '[:space:]'
+    elif [ -f "/etc/node_identity" ]; then
+        cat "/etc/node_identity" | tr -d '[:space:]'
+    else
+        hostname
+    fi
+}
+export NODE_NAME="$(get_node_name)"
+
+# 3. Workspace root, tags, and run type
+export PLOWINF_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PROMPT_FILE="$PLOWINF_ROOT/AI.md"
+export PLOWINF_RUN_TYPE="${1:-models}"
+
+# 4. Storage paths & model substrate
+export MODELS_DIR="${PLOWINF_ROOT}/models"
+export HF_HOME="${PLOWINF_ROOT}/models/cache/huggingface"
+export OLLAMA_BLOB_DIR="${HOME}/.ollama/models/blobs"
+mkdir -p "${MODELS_DIR}/configs" "${MODELS_DIR}/outputs" "${MODELS_DIR}/Modelfiles" "${HF_HOME}"
+
+# 5. Dedicated virtualenv activation via uv (.venv-models)
+VENV_PATH="${PLOWINF_ROOT}/.venv-models"
+if [ -f "${VENV_PATH}/bin/activate" ]; then
+    source "${VENV_PATH}/bin/activate"
+elif command -v uv >/dev/null 2>&1; then
+    echo "[*] Initializing isolated model-lab virtual environment (.venv-models) via uv..."
+    uv venv "${VENV_PATH}"
+    source "${VENV_PATH}/bin/activate"
+fi
+
+export PYTHONPATH="$PLOWINF_ROOT/src:$PLOWINF_ROOT/models:$PYTHONPATH"
+
+# 6. Interactive prompt styling ([plowinf:models])
+if [[ $- == *i* ]]; then
+    _P_USR='\[\e]0;\u@'"${NODE_NAME}"': \w\a\]\n'
+    _P_USR+='\[\033[01;32m\]\u@'"${NODE_NAME}"'\[\033[00m\]:'
+    _P_TAG='\[\033[01;35m\][plowinf'
+    _P_TAG+='${PLOWINF_RUN_TYPE:+:$PLOWINF_RUN_TYPE}'
+    _P_TAG+=']\[\033[00m\] '
+    _P_PTH='\[\033[01;37m\]\w\[\033[00m\] '
+    _P_END='\[\033[01;33m\]\D{%y%m_%H%M}_\!\[\033[00m\]\n; '
+    export PS1="${_P_USR}${_P_TAG}${_P_PTH}${_P_END}"
+    unset _P_USR _P_TAG _P_PTH _P_END
+fi
+
+# 7. Model surgery shortcuts
+alias mk-run='mergekit-yaml'
+alias hf-login='huggingface-cli login'
+
+echo "[+] plowinf model environment engaged."
+echo "    Node:      ${NODE_NAME}"
+echo "    Python:    $(python3 --version 2>&1) [$(which python3)]"
+echo "    Tag:       [${PLOWINF_RUN_TYPE}]"
+echo "    Venv:      ${VENV_PATH}"
+echo "    Models:    ${MODELS_DIR}"

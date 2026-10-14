@@ -1,0 +1,20 @@
+# Path: plowinf/models/Modelfiles/Modelfile.template
+# Generic Ollama Modelfile Template
+# Max Column: 80 Columns
+
+FROM ./model.gguf
+
+TEMPLATE """{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+{{ end }}<|im_start|>assistant
+{{ .Response }}<|im_end|>
+"""
+
+PARAMETER stop "<|im_start|>"
+PARAMETER stop "<|im_end|>"
+PARAMETER temperature 0.2
+PARAMETER num_predict 512
+
+# end of file: plowinf/models/Modelfiles/Modelfile.template

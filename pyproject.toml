@@ -1,0 +1,32 @@
+[project]
+name = "plowinf"
+version = "0.1.0"
+description = "Offline AI inference engine, SLM code worker, and queue processor"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Fred Kerr", email = "fekerr@gmail.com" }
+]
+license = { text = "Apache-2.0" }
+dependencies = [
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+plowinf = "plowinf.cli:main"
+plower = "plowinf.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

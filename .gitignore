@@ -1,0 +1,86 @@
+# Path: plowinf/.gitignore
+# Git ignore rules for plowinf workspace
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+.venv*/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing & Coverage
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Runtime / Queue / Logs
+/logs/
+/records/queue/*
+!/records/queue/*/
+!/records/queue/.gitkeep
+/records/queue/*/*
+!/records/queue/*/.gitkeep
+
+# Large language models and binaries (never commit GGUF blobs)
+/models/cache/
+/models/outputs/
+*.gguf
+*.bin
+*.safetensors
+
+# Backup and temporary files
+*.bak
+*.bak_*
+
+# Environment & credentials
+.env
+.env.*
+!.env.example
+
+# IDE & Editor artifacts
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# end of file: plowinf/.gitignore

@@ -1,0 +1,63 @@
+# ==============================================================================
+# plowinf: config_env
+# Target: Ubuntu Linux (Native / fg26)
+# ==============================================================================
+
+# 1. Cleanse foreign venv
+if [ -n "$VIRTUAL_ENV" ]; then
+    deactivate 2>/dev/null || true
+    unset VIRTUAL_ENV
+fi
+
+# 2. Node identity discovery
+get_node_name() {
+    if [ -f "${HOME}/.node_identity" ]; then
+        cat "${HOME}/.node_identity" | tr -d '[:space:]'
+    elif [ -f "/etc/node_identity" ]; then
+        cat "/etc/node_identity" | tr -d '[:space:]'
+    else
+        hostname
+    fi
+}
+export NODE_NAME="$(get_node_name)"
+
+# 3. Workspace root, tags, and prompts
+export PLOWINF_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PROMPT_FILE="$PLOWINF_ROOT/AI.md"
+export PLOWINF_RUN_TYPE="${1:-dev}"
+
+# 4. Local AI coordinates and air-gap endpoints
+export OLLAMA_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
+export OPENAI_COMPAT_HOST="${OPENAI_COMPAT_HOST:-http://127.0.0.1:8000/v1}"
+
+# 5. Virtualenv activation via uv
+VENV_PATH="${PLOWINF_ROOT}/.venv"
+if [ -f "${VENV_PATH}/bin/activate" ]; then
+    source "${VENV_PATH}/bin/activate"
+elif command -v uv >/dev/null 2>&1; then
+    echo "[*] Initializing local virtual environment via uv..."
+    uv venv "${VENV_PATH}"
+    source "${VENV_PATH}/bin/activate"
+    uv pip install -e ".[dev]" 2>/dev/null || true
+fi
+
+export PYTHONPATH="$PLOWINF_ROOT/src:$PYTHONPATH"
+
+# 6. Interactive prompt styling (PS1 with node, tag, timestamp, and ; line)
+if [[ $- == *i* ]]; then
+    _P_USR='\[\e]0;\u@'"${NODE_NAME}"': \w\a\]\n'
+    _P_USR+='\[\033[01;32m\]\u@'"${NODE_NAME}"'\[\033[00m\]:'
+    _P_TAG='\[\033[01;36m\][plowinf'
+    _P_TAG+='${PLOWINF_RUN_TYPE:+:$PLOWINF_RUN_TYPE}'
+    _P_TAG+=']\[\033[00m\] '
+    _P_PTH='\[\033[01;37m\]\w\[\033[00m\] '
+    _P_END='\[\033[01;33m\]\D{%y%m_%H%M}_\!\[\033[00m\]\n; '
+    export PS1="${_P_USR}${_P_TAG}${_P_PTH}${_P_END}"
+    unset _P_USR _P_TAG _P_PTH _P_END
+fi
+
+echo "[+] plowinf environment engaged."
+echo "    Node:        ${NODE_NAME}"
+echo "    Python:      $(python3 --version 2>&1) [$(which python3)]"
+echo "    Root:        ${PLOWINF_ROOT}"
+echo "    Ollama:      ${OLLAMA_HOST}"
