@@ -6,6 +6,8 @@ Autonomous offline Small Language Model (SLM) inference laboratory, code
 processor, and file-backed task queue processor for edge, developer
 workstation, and zero-cloud environments.
 
+Repository: <https://github.com/aomaker-org/plowinf>
+
 ---
 
 ## Key Features
