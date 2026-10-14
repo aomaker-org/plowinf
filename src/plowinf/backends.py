@@ -277,13 +277,13 @@ class LlamaCppCliBackend(SLMBackend):
     def __init__(
         self,
         binary_path: Optional[str] = None,
-        model_path: str = "",
+        model_path: Optional[str] = None,
         threads: int = 4,
         timeout: float = 120.0,
     ):
         super().__init__(name="llama_cpp_cli")
         self.binary_path = binary_path or self._find_binary()
-        self.model_path = model_path
+        self.model_path = model_path or self._find_model()
         self.threads = threads
         self.timeout = timeout
 
@@ -300,10 +300,20 @@ class LlamaCppCliBackend(SLMBackend):
                 return c
         return "llama-cli"
 
+    def _find_model(self) -> str:
+        candidates = [
+            os.getenv("LLAMA_MODEL_PATH", ""),
+            os.path.expanduser("~/ai_models/qwen2-1.5b.gguf"),
+        ]
+        for c in candidates:
+            if c and os.path.isfile(c):
+                return c
+        return ""
+
     def is_available(self) -> bool:
         if not (shutil.which(self.binary_path) or (os.path.isfile(self.binary_path) and os.access(self.binary_path, os.X_OK))):
             return False
-        if self.model_path and not os.path.exists(self.model_path):
+        if not self.model_path or not os.path.exists(self.model_path):
             return False
         return True
 
@@ -311,19 +321,21 @@ class LlamaCppCliBackend(SLMBackend):
         if not self.is_available():
             raise RuntimeError(f"llama-cli binary or model '{self.model_path}' not available.")
 
+        full_prompt = f"{system_prompt + chr(10) if system_prompt else ''}{prompt}"
         cmd = [
             self.binary_path,
             "-m",
             self.model_path,
             "-p",
-            f"{system_prompt + chr(10) if system_prompt else ''}{prompt}",
+            full_prompt,
             "-t",
             str(self.threads),
             "-n",
             str(kwargs.get("max_tokens", 512)),
             "--temp",
             str(kwargs.get("temperature", 0.2)),
-            "--no-display-prompt",
+            "--single-turn",
+            "--simple-io",
         ]
         res = subprocess.run(
             cmd,
@@ -334,7 +346,24 @@ class LlamaCppCliBackend(SLMBackend):
         )
         if res.returncode != 0:
             raise RuntimeError(f"llama-cli exited with {res.returncode}: {res.stderr}")
-        return res.stdout.strip()
+
+        raw = res.stdout
+        marker = f"> {full_prompt}"
+        if marker in raw:
+            content_after = raw.split(marker, 1)[1]
+            lines = []
+            for l in content_after.splitlines():
+                if l.strip().startswith("[ Prompt:") or l.strip() == "Exiting...":
+                    continue
+                lines.append(l)
+            return "\n".join(lines).strip()
+        elif "> " in raw:
+            parts = raw.split("> ")
+            if len(parts) >= 2:
+                content_after = parts[-1]
+                lines = [l for l in content_after.splitlines() if not l.strip().startswith("[ Prompt:") and l.strip() != "Exiting..."]
+                return "\n".join(lines).strip()
+        return raw.strip()
 
 
 class Llama2cBackend(SLMBackend):
