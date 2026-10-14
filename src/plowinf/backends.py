@@ -186,42 +186,64 @@ class OllamaBackend(SLMBackend):
 
 
 class OpenAICompatBackend(SLMBackend):
-    """Adapter for OpenAI-compatible local servers (vLLM, LM Studio, LiteRT)."""
+    """Adapter for OpenAI-compatible local servers (vLLM, LM Studio, LiteRT, Ollama /v1)."""
 
     def __init__(
         self,
-        base_url: str = "http://127.0.0.1:8000/v1",
+        base_url: Optional[str] = None,
         model: str = "default",
         api_key: str = "EMPTY",
-        timeout: float = 60.0,
+        timeout: Optional[float] = None,
     ):
-        validate_local_only_url(base_url)
+        effective_url = (
+            base_url
+            or os.getenv("OPENAI_BASE_URL")
+            or os.getenv("OPENAI_COMPAT_HOST")
+            or "http://127.0.0.1:8000/v1"
+        )
+        validate_local_only_url(effective_url)
         super().__init__(name="openai_compat")
-        self.base_url = base_url.rstrip("/")
+        self.base_url = effective_url.rstrip("/")
         self.model = model
         self.api_key = api_key
-        self.timeout = timeout
+        self.timeout = timeout if timeout is not None else float(os.getenv("PLOWER_TIMEOUT", "600.0"))
+        self._url_explicit = base_url is not None or os.getenv("OPENAI_BASE_URL") is not None
 
     def list_models(self) -> List[str]:
-        try:
-            headers = {"Authorization": f"Bearer {self.api_key}"}
-            resp = requests.get(f"{self.base_url}/models", headers=headers, timeout=3.0)
-            if resp.status_code == 200:
-                data = resp.json()
-                return [m.get("id", "") for m in data.get("data", []) if m.get("id")]
-        except Exception:
-            pass
+        for candidate_url in ([self.base_url] if self._url_explicit else [self.base_url, "http://127.0.0.1:11434/v1"]):
+            try:
+                headers = {"Authorization": f"Bearer {self.api_key}"}
+                resp = requests.get(f"{candidate_url}/models", headers=headers, timeout=3.0)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    models = [m.get("id", "") for m in data.get("data", []) if m.get("id")]
+                    if models:
+                        self.base_url = candidate_url
+                        return models
+            except Exception:
+                pass
         return []
 
     def is_available(self) -> bool:
-        try:
-            headers = {"Authorization": f"Bearer {self.api_key}"}
-            resp = requests.get(f"{self.base_url}/models", headers=headers, timeout=3.0)
-            return resp.status_code == 200
-        except Exception:
-            return False
+        for candidate_url in ([self.base_url] if self._url_explicit else [self.base_url, "http://127.0.0.1:11434/v1"]):
+            try:
+                headers = {"Authorization": f"Bearer {self.api_key}"}
+                resp = requests.get(f"{candidate_url}/models", headers=headers, timeout=3.0)
+                if resp.status_code == 200:
+                    self.base_url = candidate_url
+                    return True
+            except Exception:
+                pass
+        return False
 
     def generate(self, prompt: str, system_prompt: Optional[str] = None, **kwargs) -> str:
+        # Resolve model name if set to default
+        active_model = self.model
+        if active_model == "default":
+            models = self.list_models()
+            if models:
+                active_model = models[0]
+
         url = f"{self.base_url}/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -233,7 +255,7 @@ class OpenAICompatBackend(SLMBackend):
         messages.append({"role": "user", "content": prompt})
 
         payload = {
-            "model": self.model,
+            "model": active_model,
             "messages": messages,
             "temperature": kwargs.get("temperature", 0.2),
             "max_tokens": kwargs.get("max_tokens", 1024),
@@ -254,19 +276,32 @@ class LlamaCppCliBackend(SLMBackend):
 
     def __init__(
         self,
-        binary_path: str = "llama-cli",
+        binary_path: Optional[str] = None,
         model_path: str = "",
         threads: int = 4,
         timeout: float = 120.0,
     ):
         super().__init__(name="llama_cpp_cli")
-        self.binary_path = binary_path
+        self.binary_path = binary_path or self._find_binary()
         self.model_path = model_path
         self.threads = threads
         self.timeout = timeout
 
+    def _find_binary(self) -> str:
+        candidates = [
+            os.getenv("LLAMA_CLI_PATH", ""),
+            "llama-cli",
+            os.path.expanduser("~/.local/bin/llama-cli"),
+            "/usr/bin/llama-cli",
+            "/usr/local/bin/llama-cli",
+        ]
+        for c in candidates:
+            if c and (shutil.which(c) or (os.path.isfile(c) and os.access(c, os.X_OK))):
+                return c
+        return "llama-cli"
+
     def is_available(self) -> bool:
-        if not shutil.which(self.binary_path):
+        if not (shutil.which(self.binary_path) or (os.path.isfile(self.binary_path) and os.access(self.binary_path, os.X_OK))):
             return False
         if self.model_path and not os.path.exists(self.model_path):
             return False
