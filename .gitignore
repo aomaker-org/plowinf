@@ -52,7 +52,7 @@ coverage.xml
 .pytest_cache/
 
 # Runtime / Queue / Logs
-/logs/
+logs/
 /records/queue/*
 !/records/queue/*/
 !/records/queue/.gitkeep
